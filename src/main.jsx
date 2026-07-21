@@ -4,16 +4,21 @@ import {
   AlertTriangle,
   ArrowDownToLine,
   ArrowLeft,
+  Building2,
   Camera,
+  Cable,
   Check,
   ChevronDown,
   ClipboardCheck,
+  CircleDot,
   Cloud,
   Compass,
   Crosshair,
   Download,
   ExternalLink,
+  FileImage,
   FileText,
+  FileUp,
   GitBranch,
   Home,
   ImagePlus,
@@ -21,16 +26,21 @@ import {
   Layers3,
   MapPin,
   Menu,
+  MousePointer2,
   Navigation,
   Plus,
+  Printer,
   RadioTower,
+  RotateCcw,
   Route,
   Search,
+  Save,
   Settings2,
   ShieldAlert,
   SlidersHorizontal,
   Sparkles,
   Sun,
+  Trash2,
   Upload,
   X,
   Zap,
@@ -64,6 +74,25 @@ const initialObjects = [
   { id: 'p6', type: 'pole', name: 'Опора № 31', subtitle: 'Ф-3 · 2-стоечная', status: 'muted', progress: 30, coords: [56.3147, 38.1870], legCount: 2, schemeLegCount: 2, meterType: 'Не проверен', meter: 'Не проверен', phase: 'A B C', house: true, lighting: 'От уличного', roadSide: 'Справа' },
 ];
 
+const defaultProject = {
+  id: 'survey-24-071',
+  settlement: 'д. Березняки',
+  district: 'Сергиево-Посадский район',
+  region: 'Московская область',
+  surveyDate: '2026-07-21',
+  notes: 'Обследование сети 0,4 кВ вдоль всех фидеров КТП.',
+  ktp: initialKtp,
+};
+
+function readLocalProject() {
+  try {
+    const raw = localStorage.getItem('kontur-survey-project');
+    return raw ? JSON.parse(raw) : defaultProject;
+  } catch {
+    return defaultProject;
+  }
+}
+
 const checks = [
   { id: 'map', label: 'Реальная опора соответствует схеме', note: 'Номер и количество ног', group: 'Сверка со схемой' },
   { id: 'meter', label: 'Прибор учета зафиксирован', note: 'Тип и заводской номер', group: 'Проверка ПУ' },
@@ -84,7 +113,7 @@ function tgInit() {
   }
 }
 
-function YandexMap({ objects, selectedId, onSelect, showScheme }) {
+function YandexMap({ objects, selectedId, onSelect, showScheme, center }) {
   const mapRef = useRef(null);
   const ymapsRef = useRef(null);
   const apiKey = import.meta.env.VITE_YANDEX_MAPS_API_KEY;
@@ -99,7 +128,7 @@ function YandexMap({ objects, selectedId, onSelect, showScheme }) {
       window.ymaps.ready(() => {
         if (!mapRef.current || ymapsRef.current) return;
         const map = new window.ymaps.Map(mapRef.current, {
-          center: initialKtp.coords,
+          center: center || initialKtp.coords,
           zoom: 14,
           controls: ['zoomControl', 'geolocationControl'],
         });
@@ -126,7 +155,7 @@ function YandexMap({ objects, selectedId, onSelect, showScheme }) {
       document.body.appendChild(script);
     } else init();
     return () => { if (ymapsRef.current) { ymapsRef.current.destroy(); ymapsRef.current = null; } };
-  }, [apiKey]);
+  }, [apiKey, center, objects]);
 
   return (
     <div className="map-shell">
@@ -188,18 +217,18 @@ function PhotoStrip({ photos, onAdd }) {
   );
 }
 
-function KtpPanel({ onClose }) {
+function KtpPanel({ onClose, ktp }) {
   const [photos, setPhotos] = useState([]);
   const addPhoto = (event) => {
     const files = Array.from(event.target.files || []).slice(0, 5 - photos.length);
     setPhotos((current) => [...current, ...files.map((file, i) => ({ id: `${file.name}-${Date.now()}-${i}`, url: URL.createObjectURL(file), label: 'КТП' }))]);
   };
   return <aside className="detail-panel">
-    <div className="detail-header"><button className="back-button" onClick={onClose}><ArrowLeft size={18} /></button><div><span className="eyebrow">Карточка объекта</span><h2>{initialKtp.name}</h2></div><button className="ghost-button"><MoreIcon /></button></div>
+    <div className="detail-header"><button className="back-button" onClick={onClose}><ArrowLeft size={18} /></button><div><span className="eyebrow">Карточка объекта</span><h2>{ktp.name}</h2></div><button className="ghost-button"><MoreIcon /></button></div>
     <div className="detail-scroll">
-      <div className="object-address"><MapPin size={16} /><span>{initialKtp.address}</span><button><ExternalLink size={14} /></button></div>
+      <div className="object-address"><MapPin size={16} /><span>{ktp.address}</span><button><ExternalLink size={14} /></button></div>
       <div className="progress-card"><div className="progress-heading"><div><span>Готовность обследования</span><strong>68%</strong></div><StatusPill status="warning">Есть замечания</StatusPill></div><div className="progress-track"><div style={{ width: '68%' }} /></div><p><Check size={14} /> 19 из 28 объектов проверено</p></div>
-      <div className="detail-section"><div className="section-title-row"><div><h3>Паспорт КТП</h3><p>Заполните по факту на месте</p></div><button className="edit-button"><Settings2 size={15} /> Изменить</button></div><div className="passport-grid"><DataCell label="Трансформатор" value={initialKtp.transformer} /><DataCell label="Мощность" value={initialKtp.kva} /><DataCell label="Прибор учета" value={initialKtp.meter} /><DataCell label="Трансформаторы тока" value={`${initialKtp.tt} · ${initialKtp.ratio}`} /><DataCell label="Уличное освещение" value={initialKtp.lightingMeter} danger /><DataCell label="Фидеров" value={`${initialKtp.feederCount} линии`} /></div></div>
+      <div className="detail-section"><div className="section-title-row"><div><h3>Паспорт КТП</h3><p>Заполните по факту на месте</p></div><button className="edit-button"><Settings2 size={15} /> Изменить</button></div><div className="passport-grid"><DataCell label="Трансформатор" value={ktp.transformer} /><DataCell label="Мощность" value={ktp.kva} /><DataCell label="Прибор учета" value={ktp.meter} /><DataCell label="Трансформаторы тока" value={`${ktp.tt} · ${ktp.ratio}`} /><DataCell label="Уличное освещение" value={ktp.lightingMeter} danger /><DataCell label="Фидеров" value={`${ktp.feederCount} линии`} /></div></div>
       <PhotoStrip photos={photos} onAdd={addPhoto} />
       <div className="detail-section"><div className="section-title-row"><div><h3>Документы и схема</h3><p>Приложите актуальную однолинейную схему</p></div></div><label className="upload-doc"><FileText size={20} /><div><strong>Схема КТП-103.pdf</strong><span>Последняя версия · 1.2 МБ</span></div><Check className="doc-check" size={17} /></label></div>
     </div>
@@ -233,11 +262,231 @@ function PolePanel({ object, checksState, setChecksState, onClose, onLocate }) {
   </aside>;
 }
 
+function Field({ label, value, onChange, type = 'text', placeholder }) {
+  return <label className="builder-field"><span>{label}</span><input type={type} value={value ?? ''} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} /></label>;
+}
+
+function ProjectBuilderPanel({ project, objects, onSave, onClose }) {
+  const [draft, setDraft] = useState(() => ({ ...project, ktp: { ...project.ktp } }));
+  const [draftObjects, setDraftObjects] = useState(() => objects.map((object) => ({ ...object })));
+  const feeders = draftObjects.filter((object) => object.type === 'feeder');
+  const poles = draftObjects.filter((object) => object.type === 'pole');
+  const updateProject = (key, value) => setDraft((current) => ({ ...current, [key]: value }));
+  const updateKtp = (key, value) => setDraft((current) => ({ ...current, ktp: { ...current.ktp, [key]: value } }));
+  const updateObject = (id, key, value) => setDraftObjects((current) => current.map((object) => object.id === id ? { ...object, [key]: value } : object));
+  const addFeeder = () => setDraftObjects((current) => [...current, { id: `f-${Date.now()}`, type: 'feeder', name: `Фидер Ф-${current.filter((item) => item.type === 'feeder').length + 1}`, subtitle: 'Новая линия · 0,4 кВ', status: 'muted', progress: 0, coords: draft.ktp.coords }]);
+  const addPole = () => setDraftObjects((current) => [...current, { id: `p-${Date.now()}`, type: 'pole', name: `Опора № ${current.filter((item) => item.type === 'pole').length + 1}`, subtitle: `${feeders[0]?.name || 'Фидер Ф-1'} · новая опора`, status: 'muted', progress: 0, coords: draft.ktp.coords, legCount: 2, schemeLegCount: 2, meterType: 'Не проверен', meter: 'Не проверен', phase: 'A B C', house: false, lighting: 'Нет', roadSide: 'Не определена' }]);
+  const removeObject = (id) => setDraftObjects((current) => current.filter((object) => object.id !== id));
+  const save = () => onSave({ ...draft, ktp: { ...draft.ktp, feederCount: feeders.length } }, draftObjects);
+  return <aside className="detail-panel builder-panel">
+    <div className="detail-header"><button className="back-button" onClick={onClose}><ArrowLeft size={18} /></button><div><span className="eyebrow">Единоличный режим</span><h2>Настройка обследования</h2></div><Save size={18} className="builder-save-icon" /></div>
+    <div className="detail-scroll builder-scroll">
+      <div className="builder-intro"><Building2 size={20} /><div><strong>Полная схема населённого пункта</strong><span>Заполните исходные данные, а «Контур» построит структуру КТП → фидеры → опоры → ПУ.</span></div></div>
+      <div className="detail-section"><div className="section-title-row"><div><h3>1. Населённый пункт</h3><p>Общие данные обследования</p></div></div><div className="builder-grid"><Field label="Населённый пункт" value={draft.settlement} onChange={(value) => updateProject('settlement', value)} /><Field label="Район" value={draft.district} onChange={(value) => updateProject('district', value)} /><Field label="Субъект РФ" value={draft.region} onChange={(value) => updateProject('region', value)} /><Field label="Дата обследования" type="date" value={draft.surveyDate} onChange={(value) => updateProject('surveyDate', value)} /></div><label className="builder-field full"><span>Примечание по маршруту</span><textarea value={draft.notes || ''} onChange={(event) => updateProject('notes', event.target.value)} /></label></div>
+      <div className="detail-section"><div className="section-title-row"><div><h3>2. КТП</h3><p>Паспортная информация</p></div></div><div className="builder-grid"><Field label="Наименование / номер" value={draft.ktp.name} onChange={(value) => updateKtp('name', value)} /><Field label="Адрес / ориентир" value={draft.ktp.address} onChange={(value) => updateKtp('address', value)} /><Field label="Трансформатор" value={draft.ktp.transformer} onChange={(value) => updateKtp('transformer', value)} /><Field label="Мощность, кВА" value={draft.ktp.kva} onChange={(value) => updateKtp('kva', value)} /><Field label="Номер ПУ КТП" value={draft.ktp.meter} onChange={(value) => updateKtp('meter', value)} /><Field label="ТТ и коэффициент" value={`${draft.ktp.tt || ''} · ${draft.ktp.ratio || ''}`} onChange={(value) => { const [tt, ratio] = value.split('·').map((item) => item.trim()); updateKtp('tt', tt); updateKtp('ratio', ratio); }} /><Field label="ПУ уличного освещения" value={draft.ktp.lightingMeter} onChange={(value) => updateKtp('lightingMeter', value)} /></div></div>
+      <div className="detail-section"><div className="section-title-row"><div><h3>3. Фидеры</h3><p>Все отходящие линии КТП</p></div><button className="edit-button" onClick={addFeeder}><Plus size={14} /> Добавить</button></div><div className="builder-list">{feeders.map((feeder, index) => <div className="builder-row" key={feeder.id}><div className="builder-row-title"><strong>{index + 1}. {feeder.name}</strong><button className="remove-button" onClick={() => removeObject(feeder.id)}><X size={13} /></button></div><div className="builder-grid"><Field label="Название фидера" value={feeder.name} onChange={(value) => updateObject(feeder.id, 'name', value)} /><Field label="Описание / направление" value={feeder.subtitle} onChange={(value) => updateObject(feeder.id, 'subtitle', value)} /></div></div>)}</div></div>
+      <div className="detail-section"><div className="section-title-row"><div><h3>4. Опоры, участки и ПУ</h3><p>Одна строка — один фактический объект на линии</p></div><button className="edit-button" onClick={addPole}><Plus size={14} /> Добавить</button></div><div className="builder-list">{poles.map((pole, index) => <div className="builder-row" key={pole.id}><div className="builder-row-title"><strong>{index + 1}. {pole.name}</strong><button className="remove-button" onClick={() => removeObject(pole.id)}><X size={13} /></button></div><div className="builder-grid"><Field label="Номер опоры" value={pole.name} onChange={(value) => updateObject(pole.id, 'name', value)} /><Field label="Фидер" value={pole.subtitle} onChange={(value) => updateObject(pole.id, 'subtitle', value)} /><Field label="Тип ПУ" value={pole.meterType} onChange={(value) => updateObject(pole.id, 'meterType', value)} /><Field label="Номер ПУ" value={pole.meter} onChange={(value) => updateObject(pole.id, 'meter', value)} /><Field label="Ноги: факт / схема" value={`${pole.legCount} / ${pole.schemeLegCount}`} onChange={(value) => { const [fact, scheme] = value.split('/').map((item) => Number(item.trim())); updateObject(pole.id, 'legCount', fact || 0); updateObject(pole.id, 'schemeLegCount', scheme || 0); }} /><Field label="Фазность" value={pole.phase} onChange={(value) => updateObject(pole.id, 'phase', value)} /><Field label="Сторона дороги" value={pole.roadSide} onChange={(value) => updateObject(pole.id, 'roadSide', value)} /><Field label="Фонарь" value={pole.lighting} onChange={(value) => updateObject(pole.id, 'lighting', value)} /><Field label="Координаты" value={pole.coords?.join(', ')} onChange={(value) => updateObject(pole.id, 'coords', value.split(',').map((item) => Number(item.trim())))} /><label className="builder-field"><span>Дом / ввод на участке</span><select value={pole.house ? 'Есть' : 'Нет'} onChange={(event) => updateObject(pole.id, 'house', event.target.value === 'Есть')}><option>Есть</option><option>Нет</option></select></label></div></div>)}</div></div>
+    </div>
+    <div className="panel-footer"><button className="secondary-button" onClick={onClose}>Отмена</button><button className="primary-button" onClick={save}><Save size={16} /> Сохранить локально</button></div>
+  </aside>;
+}
+
+function SettlementSchemePanel({ project, objects, onClose, onSelect }) {
+  const feeders = objects.filter((object) => object.type === 'feeder');
+  const poles = objects.filter((object) => object.type === 'pole');
+  return <aside className="detail-panel scheme-panel"><div className="detail-header"><button className="back-button" onClick={onClose}><ArrowLeft size={18} /></button><div><span className="eyebrow">Структурированная схема</span><h2>{project.settlement}</h2></div><GitBranch size={18} className="builder-save-icon" /></div><div className="detail-scroll"><div className="scheme-summary"><div><strong>{project.ktp.name}</strong><span>{project.ktp.transformer} · {project.ktp.kva}</span></div><div className="scheme-stats"><span><b>{feeders.length}</b> фидера</span><span><b>{poles.length}</b> опор</span></div></div><div className="scheme-tree"><div className="tree-root"><Zap size={15} /> {project.ktp.name}<small>{project.ktp.address}</small></div>{feeders.map((feeder) => { const feederKey = feeder.name.replace(/^Фидер\s*/i, '').trim(); const feederPoles = poles.filter((pole) => pole.subtitle?.startsWith(feederKey)); return <div className="tree-feeder" key={feeder.id}><div className="tree-feeder-title"><Route size={15} /><strong>{feeder.name}</strong><span>{feeder.subtitle}</span></div><div className="tree-poles">{feederPoles.map((pole) => <button key={pole.id} className="tree-pole" onClick={() => onSelect(pole.id)}><RadioTower size={14} /><span><strong>{pole.name}</strong><small>{pole.meterType} · {pole.meter}</small></span><StatusPill status={pole.status}>{pole.house ? 'Дом' : 'Пусто'}</StatusPill></button>)}{feederPoles.length === 0 && <div className="empty-tree">Опоры ещё не привязаны к этому фидеру</div>}</div></div>; })}</div><div className="detail-section scheme-checks"><h3>Автоматические расхождения</h3><p>Система подсвечивает места, где фактические данные не совпадают с исходной схемой.</p>{poles.filter((pole) => pole.legCount !== pole.schemeLegCount || pole.meter === 'Не найден' || pole.meterType === 'Не найден').map((pole) => <button key={pole.id} onClick={() => onSelect(pole.id)}><AlertTriangle size={14} /><span>{pole.name}: требуется проверка</span></button>)}{poles.every((pole) => pole.legCount === pole.schemeLegCount && pole.meter !== 'Не найден' && pole.meterType !== 'Не найден') && <div className="empty-tree">Расхождений по введённым данным нет.</div>}</div></div><div className="panel-footer"><button className="primary-button" onClick={onClose}>Вернуться к карте</button></div></aside>;
+}
+
+const diagramTypeLabels = {
+  ktp: 'КТП',
+  pole: 'Опора',
+  meter: 'ПУ',
+  house: 'Дом / участок',
+  lamp: 'Фонарь',
+  branch: 'Ответвление',
+  switch: 'Аппарат',
+  note: 'Замечание',
+};
+
+function getFeederCode(value = '') {
+  const match = value.match(/Ф-?\s*\d+/i);
+  return match ? match[0].replace(/\s+/g, '').toUpperCase() : 'Ф-1';
+}
+
+function getSchemeNode(id, type, x, y, title, subtitle = '', extra = {}) {
+  return { id, type, x, y, title, subtitle, color: extra.color || '#101827', ...extra };
+}
+
+function buildDiagram(project, objects) {
+  const feeders = objects.filter((object) => object.type === 'feeder');
+  const poles = objects.filter((object) => object.type === 'pole');
+  const nodes = [
+    getSchemeNode('diagram-ktp', 'ktp', 600, 665, project.ktp.name, `${project.ktp.transformer} · ${project.ktp.kva}`, { color: '#1262c9' }),
+    getSchemeNode('diagram-transformer', 'switch', 600, 590, 'Ввод 10 кВ', project.ktp.transformer, { color: '#101827' }),
+  ];
+  const edges = [{ id: 'edge-ktp-transformer', from: 'diagram-ktp', to: 'diagram-transformer', label: 'ВЛ-10 кВ', color: '#2563eb', dashed: true }];
+  const laneX = [210, 600, 990];
+
+  feeders.forEach((feeder, feederIndex) => {
+    const code = getFeederCode(feeder.name);
+    const feederPoles = poles.filter((pole) => getFeederCode(pole.subtitle) === code);
+    const baseX = laneX[feederIndex % laneX.length];
+    const baseY = 485 - Math.floor(feederIndex / laneX.length) * 92;
+    let previous = 'diagram-transformer';
+    feederPoles.forEach((pole, poleIndex) => {
+      const x = Math.max(100, Math.min(1100, baseX + (poleIndex % 2 === 0 ? 0 : (feederIndex % 2 ? -80 : 80))));
+      const y = Math.max(135, baseY - poleIndex * 66);
+      const poleId = `diagram-${pole.id}`;
+      nodes.push(getSchemeNode(poleId, 'pole', x, y, pole.name.replace(/^Опора\s*/i, ''), `${code} · ${pole.legCount || 2} ноги`, { color: pole.status === 'danger' ? '#dc2626' : pole.status === 'warning' ? '#d88914' : '#111827', objectId: pole.id }));
+      edges.push({ id: `edge-${previous}-${poleId}`, from: previous, to: poleId, label: poleIndex === 0 ? `${code} · СИП 4×70` : '', color: feederIndex === 0 ? '#2563eb' : feederIndex === 1 ? '#d18a18' : '#19a974', dashed: feederIndex !== 1 });
+      previous = poleId;
+      const houseId = `diagram-house-${pole.id}`;
+      const meterId = `diagram-meter-${pole.id}`;
+      nodes.push(getSchemeNode(houseId, 'house', x + (poleIndex % 2 === 0 ? 68 : -68), y - 13, pole.house ? `Участок ${pole.name.replace(/\D/g, '')}` : 'Пустой участок', pole.roadSide || '', { color: pole.house ? '#111827' : '#9aa5b3', objectId: pole.id, muted: !pole.house }));
+      nodes.push(getSchemeNode(meterId, 'meter', x + (poleIndex % 2 === 0 ? 68 : -68), y + 29, pole.meterType || 'ПУ', pole.meter || 'Не найден', { color: pole.meter === 'Не найден' ? '#dc2626' : '#111827', objectId: pole.id }));
+      edges.push({ id: `edge-${poleId}-${houseId}`, from: poleId, to: houseId, label: pole.phase || '', color: '#111827' });
+      edges.push({ id: `edge-${poleId}-${meterId}`, from: poleId, to: meterId, label: '', color: '#111827', dashed: true });
+      if (pole.lighting && pole.lighting !== 'Нет') {
+        const lampId = `diagram-lamp-${pole.id}`;
+        nodes.push(getSchemeNode(lampId, 'lamp', x + (poleIndex % 2 === 0 ? 38 : -38), y - 46, 'Ф', pole.lighting, { color: '#ee9b19', objectId: pole.id }));
+        edges.push({ id: `edge-${poleId}-${lampId}`, from: poleId, to: lampId, label: 'осв.', color: '#ee9b19', dashed: true });
+      }
+    });
+    if (!feederPoles.length) {
+      const endId = `diagram-empty-${feeder.id}`;
+      nodes.push(getSchemeNode(endId, 'branch', baseX, baseY, code, 'фидер без опор', { color: '#9aa5b3' }));
+      edges.push({ id: `edge-transformer-${endId}`, from: 'diagram-transformer', to: endId, label: code, color: '#9aa5b3', dashed: true });
+    }
+  });
+  nodes.push(getSchemeNode('diagram-note', 'note', 94, 690, 'Автоматически построено из данных обследования', 'Перетащите элементы для точной компоновки', { color: '#2563eb' }));
+  return { version: 1, title: `Схема балансовой группы ${project.ktp.name}`, settlement: project.settlement, date: project.surveyDate, page: 'A3 landscape', nodes, edges };
+}
+
+function downloadText(filename, content, mime = 'text/plain;charset=utf-8') {
+  const url = URL.createObjectURL(new Blob([content], { type: mime }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function DiagramNode({ node, selected, onSelect, onPointerDown }) {
+  const label = node.title || diagramTypeLabels[node.type];
+  const subtitle = node.subtitle || '';
+  const nodeColor = node.color || '#101827';
+  const common = { onClick: (event) => { event.stopPropagation(); onSelect(node.id); }, onPointerDown: (event) => onPointerDown(event, node.id), className: `diagram-node ${selected ? 'selected' : ''}` };
+  if (node.type === 'ktp') return <g {...common}><circle cx={node.x} cy={node.y} r="30" fill="#eaf3ff" stroke={nodeColor} strokeWidth="3" /><circle cx={node.x - 9} cy={node.y} r="9" fill="none" stroke={nodeColor} strokeWidth="2" /><circle cx={node.x + 9} cy={node.y} r="9" fill="none" stroke={nodeColor} strokeWidth="2" /><text x={node.x} y={node.y + 52} textAnchor="middle" className="diagram-title">{label}</text><text x={node.x} y={node.y + 67} textAnchor="middle" className="diagram-subtitle">{subtitle}</text></g>;
+  if (node.type === 'pole') return <g {...common}><rect x={node.x - 9} y={node.y - 9} width="18" height="18" fill="#fff" stroke={nodeColor} strokeWidth="2" /><text x={node.x} y={node.y - 16} textAnchor="middle" className="diagram-title">{label}</text><text x={node.x} y={node.y + 25} textAnchor="middle" className="diagram-subtitle">{subtitle}</text></g>;
+  if (node.type === 'house') return <g {...common} opacity={node.muted ? 0.58 : 1}><path d={`M ${node.x - 22} ${node.y - 2} L ${node.x} ${node.y - 19} L ${node.x + 22} ${node.y - 2}`} fill="none" stroke={nodeColor} strokeWidth="2" /><rect x={node.x - 15} y={node.y - 2} width="30" height="22" fill="#fff" stroke={nodeColor} strokeWidth="2" /><text x={node.x} y={node.y + 34} textAnchor="middle" className="diagram-title">{label}</text><text x={node.x} y={node.y + 48} textAnchor="middle" className="diagram-subtitle">{subtitle}</text></g>;
+  if (node.type === 'meter') return <g {...common}><rect x={node.x - 34} y={node.y - 13} width="68" height="26" fill="#fff" stroke={nodeColor} strokeWidth="1.6" /><text x={node.x} y={node.y - 1} textAnchor="middle" className="diagram-title small">{label}</text><text x={node.x} y={node.y + 10} textAnchor="middle" className="diagram-subtitle tiny">{subtitle}</text></g>;
+  if (node.type === 'lamp') return <g {...common}><line x1={node.x} y1={node.y + 18} x2={node.x} y2={node.y - 8} stroke={nodeColor} strokeWidth="2" /><circle cx={node.x} cy={node.y - 12} r="7" fill="#fff5d8" stroke={nodeColor} strokeWidth="2" /><text x={node.x} y={node.y + 31} textAnchor="middle" className="diagram-subtitle">{label} · {subtitle}</text></g>;
+  if (node.type === 'note') return <g {...common}><rect x={node.x - 110} y={node.y - 20} width="220" height="42" rx="4" fill="#eef6ff" stroke={nodeColor} strokeDasharray="4 3" /><text x={node.x} y={node.y - 2} textAnchor="middle" className="diagram-title small">{label}</text><text x={node.x} y={node.y + 12} textAnchor="middle" className="diagram-subtitle tiny">{subtitle}</text></g>;
+  return <g {...common}><circle cx={node.x} cy={node.y} r="12" fill="#fff" stroke={nodeColor} strokeWidth="2" /><text x={node.x} y={node.y + 29} textAnchor="middle" className="diagram-title">{label}</text><text x={node.x} y={node.y + 42} textAnchor="middle" className="diagram-subtitle">{subtitle}</text></g>;
+}
+
+function DiagramEditorPanel({ project, objects, diagram, onSave, onClose }) {
+  const [draft, setDraft] = useState(() => diagram || buildDiagram(project, objects));
+  const [selectedId, setSelectedId] = useState('diagram-ktp');
+  const [drag, setDrag] = useState(null);
+  const [zoom, setZoom] = useState(1);
+  const [linkMode, setLinkMode] = useState(false);
+  const [linkFrom, setLinkFrom] = useState(null);
+  const svgRef = useRef(null);
+  const nodesById = useMemo(() => Object.fromEntries(draft.nodes.map((node) => [node.id, node])), [draft.nodes]);
+  const selectedNode = nodesById[selectedId];
+  const pointFromEvent = (event) => {
+    const rect = svgRef.current.getBoundingClientRect();
+    return { x: ((event.clientX - rect.left) / rect.width) * 1200, y: ((event.clientY - rect.top) / rect.height) * 760 };
+  };
+  const updateNode = (id, patch) => setDraft((current) => ({ ...current, nodes: current.nodes.map((node) => node.id === id ? { ...node, ...patch } : node) }));
+  const startDrag = (event, id) => {
+    if (linkMode) return;
+    const node = nodesById[id];
+    const point = pointFromEvent(event);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    setDrag({ id, dx: node.x - point.x, dy: node.y - point.y });
+  };
+  const moveDrag = (event) => {
+    if (!drag) return;
+    const point = pointFromEvent(event);
+    updateNode(drag.id, { x: Math.max(35, Math.min(1165, point.x + drag.dx)), y: Math.max(35, Math.min(725, point.y + drag.dy)) });
+  };
+  const endDrag = () => setDrag(null);
+  const selectNode = (id) => {
+    if (linkMode) {
+      if (!linkFrom) { setLinkFrom(id); setSelectedId(id); return; }
+      if (linkFrom !== id) setDraft((current) => ({ ...current, edges: [...current.edges, { id: `edge-manual-${Date.now()}`, from: linkFrom, to: id, label: 'ответвление', color: '#111827', dashed: true }] }));
+      setLinkFrom(null);
+      setLinkMode(false);
+      setSelectedId(id);
+      return;
+    }
+    setSelectedId(id);
+  };
+  const addNode = (type) => {
+    const offset = draft.nodes.length % 5;
+    const id = `diagram-manual-${type}-${Date.now()}`;
+    const defaults = { pole: ['новая', '2 ноги'], house: ['Новый участок', 'сторона дороги'], meter: ['ПУ', '№ не указан'], lamp: ['Ф', 'уличное освещение'], branch: ['Ответвление', 'СИП'], switch: ['РС-481', 'аппарат'], note: ['Замечание', 'добавьте текст'] };
+    const [title, subtitle] = defaults[type] || ['Элемент', ''];
+    const node = getSchemeNode(id, type, 260 + offset * 110, 170 + offset * 46, title, subtitle, { color: type === 'lamp' ? '#ee9b19' : '#111827' });
+    setDraft((current) => ({ ...current, nodes: [...current.nodes, node] }));
+    setSelectedId(id);
+  };
+  const removeSelected = () => {
+    if (!selectedNode || selectedNode.type === 'ktp') return;
+    setDraft((current) => ({ ...current, nodes: current.nodes.filter((node) => node.id !== selectedId), edges: current.edges.filter((edge) => edge.from !== selectedId && edge.to !== selectedId) }));
+    setSelectedId('diagram-ktp');
+  };
+  const exportSvg = () => {
+    if (!svgRef.current) return;
+    const clone = svgRef.current.cloneNode(true);
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    clone.setAttribute('width', '420mm');
+    clone.setAttribute('height', '297mm');
+    clone.querySelectorAll('.diagram-selection').forEach((element) => element.remove());
+    downloadText(`${project.ktp.name}-schema.svg`, new XMLSerializer().serializeToString(clone), 'image/svg+xml;charset=utf-8');
+  };
+  const reset = () => setDraft(buildDiagram(project, objects));
+  const save = () => onSave(draft);
+
+  return <aside className="detail-panel diagram-panel">
+    <div className="detail-header diagram-header"><button className="back-button" onClick={onClose}><ArrowLeft size={18} /></button><div><span className="eyebrow">Редактор топологии · формат A3</span><h2>Схема балансовой группы</h2></div><div className="diagram-header-actions"><button className="ghost-button" title="Сбросить автокомпоновку" onClick={reset}><RotateCcw size={16} /></button><button className="ghost-button" title="Печать A3" onClick={() => window.print()}><Printer size={17} /></button></div></div>
+    <div className="diagram-toolbar"><div className="diagram-tool-group"><button className={!linkMode ? 'active' : ''} onClick={() => { setLinkMode(false); setLinkFrom(null); }}><MousePointer2 size={14} /> Выбор</button><button className={linkMode ? 'active' : ''} onClick={() => setLinkMode(true)}><Cable size={14} /> Соединить</button></div><div className="diagram-tool-group"><button onClick={() => addNode('pole')}><Plus size={13} /> Опора</button><button onClick={() => addNode('house')}><Home size={14} /> Дом</button><button onClick={() => addNode('meter')}><CircleDot size={14} /> ПУ</button><button onClick={() => addNode('lamp')}><Lightbulb size={14} /> Фонарь</button><button onClick={() => addNode('note')}><FileText size={14} /> Заметка</button></div><div className="diagram-tool-group diagram-zoom"><button onClick={() => setZoom((value) => Math.max(.65, value - .1))}>−</button><span>{Math.round(zoom * 100)}%</span><button onClick={() => setZoom((value) => Math.min(1.5, value + .1))}>+</button></div></div>
+    <div className="diagram-subtoolbar"><div><strong>{draft.title}</strong><span>{draft.settlement} · {draft.date}</span></div><div className="diagram-actions"><button className="secondary-button" onClick={reset}><Sparkles size={14} /> Авторазмещение</button><button className="secondary-button" onClick={exportSvg}><FileImage size={14} /> Скачать SVG</button><button className="primary-button" onClick={save}><Save size={14} /> Сохранить</button></div></div>
+    <div className="diagram-body"><div className="diagram-canvas-wrap"><div className={`diagram-mode-hint ${linkMode ? 'linking' : ''}`}>{linkMode ? (linkFrom ? 'Выберите второй элемент для соединения' : 'Выберите первый элемент') : 'Перетаскивайте элементы мышью · кликните для редактирования'}</div><svg ref={svgRef} className="diagram-canvas" viewBox="0 0 1200 760" style={{ transform: `scale(${zoom})` }} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerLeave={endDrag} onClick={() => { if (!linkMode) setSelectedId(null); }}>
+      <defs><pattern id="diagram-grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M 24 0 L 0 0 0 24" fill="none" stroke="#e6edf5" strokeWidth="1" /></pattern><filter id="diagram-shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#516579" floodOpacity=".14" /></filter></defs>
+      <rect width="1200" height="760" fill="#fff" /><rect x="18" y="18" width="1164" height="724" fill="url(#diagram-grid)" stroke="#b8c5d3" strokeWidth="2" /><text x="55" y="64" className="diagram-page-title">{draft.title}</text><text x="55" y="92" className="diagram-page-settlement">{draft.settlement}</text><text x="1140" y="64" textAnchor="end" className="diagram-page-date">{draft.date}</text>
+      <text x="600" y="726" textAnchor="middle" className="diagram-page-footer">Контур · схема построена из данных обследования · {draft.page}</text>
+      {draft.edges.map((edge) => { const from = nodesById[edge.from]; const to = nodesById[edge.to]; if (!from || !to) return null; return <g key={edge.id}><line x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke="#fff" strokeWidth="6" /><line x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke={edge.color || '#111827'} strokeWidth={edge.width || 2} strokeDasharray={edge.dashed ? '7 5' : undefined} /><text x={(from.x + to.x) / 2} y={(from.y + to.y) / 2 - 6} className="diagram-edge-label">{edge.label}</text></g>; })}
+      {draft.nodes.map((node) => <DiagramNode key={node.id} node={node} selected={selectedId === node.id} onSelect={selectNode} onPointerDown={startDrag} />)}
+      {selectedId && nodesById[selectedId] && <rect className="diagram-selection" x={nodesById[selectedId].x - 42} y={nodesById[selectedId].y - 38} width="84" height="76" rx="5" fill="none" stroke="#2b7fff" strokeDasharray="4 3" strokeWidth="1.5" />}
+    </svg></div><div className="diagram-inspector"><div className="inspector-heading"><div><span className="eyebrow">Свойства элемента</span><h3>{selectedNode ? diagramTypeLabels[selectedNode.type] : 'Ничего не выбрано'}</h3></div>{selectedNode && selectedNode.type !== 'ktp' && <button className="remove-button" onClick={removeSelected} title="Удалить"><Trash2 size={15} /></button>}</div>{selectedNode ? <><label className="builder-field"><span>Название / подпись</span><input value={selectedNode.title || ''} onChange={(event) => updateNode(selectedId, { title: event.target.value })} /></label><label className="builder-field"><span>Дополнительные данные</span><textarea value={selectedNode.subtitle || ''} onChange={(event) => updateNode(selectedId, { subtitle: event.target.value })} /></label><label className="builder-field"><span>Цвет линии и подписи</span><input type="color" value={selectedNode.color || '#101827'} onChange={(event) => updateNode(selectedId, { color: event.target.value })} /></label><div className="inspector-coordinates"><span>X</span><input type="number" value={Math.round(selectedNode.x)} onChange={(event) => updateNode(selectedId, { x: Number(event.target.value) })} /><span>Y</span><input type="number" value={Math.round(selectedNode.y)} onChange={(event) => updateNode(selectedId, { y: Number(event.target.value) })} /></div><div className="inspector-meta"><span>Связей: {draft.edges.filter((edge) => edge.from === selectedId || edge.to === selectedId).length}</span><span>ID: {selectedNode.objectId || selectedNode.id}</span></div></> : <div className="inspector-empty"><MousePointer2 size={22} /><p>Выберите опору, ПУ, дом или участок на схеме, чтобы изменить подпись, цвет и положение.</p></div>}<div className="inspector-help"><Cable size={15} /><span>Для ручного ответвления включите «Соединить» и выберите два элемента по очереди.</span></div></div></div>
+    <div className="panel-footer"><button className="secondary-button" onClick={onClose}>Закрыть</button><button className="primary-button" onClick={save}><Save size={16} /> Сохранить схему</button></div>
+  </aside>;
+}
+
 function App() {
-  const [objects, setObjects] = useState(initialObjects);
+  const [project, setProject] = useState(readLocalProject);
+  const [objects, setObjects] = useState(() => {
+    try {
+      const raw = localStorage.getItem('kontur-survey-objects');
+      return raw ? JSON.parse(raw) : initialObjects;
+    } catch {
+      return initialObjects;
+    }
+  });
   const [selectedId, setSelectedId] = useState('p2');
   const [selectedTab, setSelectedTab] = useState('map');
   const [showScheme, setShowScheme] = useState(false);
+  const [diagram, setDiagram] = useState(() => {
+    try {
+      const raw = localStorage.getItem('kontur-schema-diagram');
+      return raw ? JSON.parse(raw) : buildDiagram(project, objects);
+    } catch {
+      return buildDiagram(project, objects);
+    }
+  });
   const [search, setSearch] = useState('');
   const [checksState, setChecksState] = useState({ map: true, meter: true, phase: false, house: true, shunt: false, light: false, photo: false });
   const [showMobileNav, setShowMobileNav] = useState(false);
@@ -252,34 +501,86 @@ function App() {
     navigator.geolocation.getCurrentPosition((position) => setGps([position.coords.latitude, position.coords.longitude]));
   };
   const exportData = () => {
-    const payload = { exportedAt: new Date().toISOString(), ktp: initialKtp, objects, checks: checksState, gps };
+    const payload = { exportedAt: new Date().toISOString(), project, ktp: project.ktp, objects, diagram, checks: checksState, gps };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'ktp-103-obsledovanie.json'; anchor.click(); URL.revokeObjectURL(url);
+    const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = `${project.settlement || 'obsledovanie'}-kontur.json`; anchor.click(); URL.revokeObjectURL(url);
+  };
+  const importData = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const payload = JSON.parse(reader.result);
+        const nextProject = payload.project || { ...defaultProject, ktp: payload.ktp || defaultProject.ktp };
+        const nextObjects = Array.isArray(payload.objects) ? payload.objects : initialObjects;
+        const nextDiagram = payload.diagram || buildDiagram(nextProject, nextObjects);
+        setProject(nextProject);
+        setObjects(nextObjects);
+        setDiagram(nextDiagram);
+        localStorage.setItem('kontur-survey-project', JSON.stringify(nextProject));
+        localStorage.setItem('kontur-survey-objects', JSON.stringify(nextObjects));
+        localStorage.setItem('kontur-schema-diagram', JSON.stringify(nextDiagram));
+      } catch {
+        window.alert('Не удалось импортировать файл: проверьте формат JSON.');
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  };
+  const saveProject = (nextProject, nextObjects) => {
+    setProject(nextProject);
+    setObjects(nextObjects);
+    const nextDiagram = buildDiagram(nextProject, nextObjects);
+    setDiagram(nextDiagram);
+    localStorage.setItem('kontur-survey-project', JSON.stringify(nextProject));
+    localStorage.setItem('kontur-survey-objects', JSON.stringify(nextObjects));
+    localStorage.setItem('kontur-schema-diagram', JSON.stringify(nextDiagram));
+    setSelectedTab('map');
+  };
+  const saveDiagram = (nextDiagram) => {
+    setDiagram(nextDiagram);
+    localStorage.setItem('kontur-schema-diagram', JSON.stringify(nextDiagram));
+    setSelectedTab('map');
+  };
+  const resetProject = () => {
+    setProject(defaultProject);
+    setObjects(initialObjects);
+    localStorage.removeItem('kontur-survey-project');
+    localStorage.removeItem('kontur-survey-objects');
+    localStorage.removeItem('kontur-schema-diagram');
+    setDiagram(buildDiagram(defaultProject, initialObjects));
+    setSelectedTab('map');
   };
   return <div className="app-shell">
-    <header className="topbar"><div className="brand"><div className="brand-mark"><Zap size={16} fill="currentColor" /></div><span>КОНТУР</span><i /></div><div className="top-context"><span className="context-kicker">Полевое обследование</span><strong>КТП-103 <ChevronDown size={15} /></strong></div><div className="top-actions"><div className="sync-state"><span /><span>Сохранено локально</span></div><button className="icon-top"><Cloud size={17} /></button><div className="avatar">ДВ</div></div><button className="mobile-menu" onClick={() => setShowMobileNav(!showMobileNav)}><Menu size={20} /></button></header>
+    <header className="topbar"><div className="brand"><div className="brand-mark"><Zap size={16} fill="currentColor" /></div><span>КОНТУР</span><i /></div><div className="top-context"><span className="context-kicker">Полевое обследование</span><strong>{project.ktp.name} <ChevronDown size={15} /></strong></div><div className="top-actions"><div className="sync-state"><span /><span>Сохранено локально</span></div><button className="icon-top" onClick={() => setSelectedTab('builder')}><Settings2 size={17} /></button><div className="avatar">ДВ</div></div><button className="mobile-menu" onClick={() => setShowMobileNav(!showMobileNav)}><Menu size={20} /></button></header>
     <div className="workspace">
       <nav className={`sidebar ${showMobileNav ? 'sidebar-open' : ''}`}>
-        <div className="session-card"><div className="session-icon"><ClipboardCheck size={18} /></div><div><strong>Сессия № 24-071</strong><span>Сергиево-Посадский РЭС</span></div><MoreIcon /></div>
+        <div className="session-card"><div className="session-icon"><ClipboardCheck size={18} /></div><div><strong>Сессия {project.id.replace('survey-', '№ ')}</strong><span>{project.district}</span></div><MoreIcon /></div>
         <div className="nav-label">Рабочее пространство</div>
         <button className={`nav-item ${selectedTab === 'map' ? 'active' : ''}`} onClick={() => setSelectedTab('map')}><MapPin size={17} /><span>Карта обследования</span><b>28</b></button>
         <button className={`nav-item ${selectedTab === 'objects' ? 'active' : ''}`} onClick={() => setSelectedTab('objects')}><RadioTower size={17} /><span>Объекты на линии</span><b>6</b></button>
+        <button className={`nav-item ${selectedTab === 'scheme' ? 'active' : ''}`} onClick={() => setSelectedTab('scheme')}><GitBranch size={17} /><span>Схема населённого пункта</span><b>{objects.length}</b></button>
+        <button className={`nav-item ${selectedTab === 'diagram' ? 'active' : ''}`} onClick={() => setSelectedTab('diagram')}><Cable size={17} /><span>Редактор схемы Visio</span><b>A3</b></button>
         <button className={`nav-item ${selectedTab === 'checklist' ? 'active' : ''}`} onClick={() => setSelectedTab('checklist')}><ClipboardCheck size={17} /><span>Общий чек-лист</span><b>{totalChecked}/7</b></button>
         <div className="nav-label spaced">Справочники</div>
-        <button className="nav-item"><FileText size={17} /><span>Схемы и документы</span></button><button className="nav-item"><Settings2 size={17} /><span>Настройки проекта</span></button>
+        <button className="nav-item"><FileText size={17} /><span>Схемы и документы</span></button><button className={`nav-item ${selectedTab === 'builder' ? 'active' : ''}`} onClick={() => setSelectedTab('builder')}><Settings2 size={17} /><span>Настройки проекта</span></button>
         <div className="sidebar-bottom"><div className="weather"><Sun size={18} /><div><strong>+18°</strong><span>Березняки · ясно</span></div></div><div className="operator"><div className="avatar small">ДВ</div><div><strong>Даниил В.</strong><span>Инженер РЭС</span></div><ChevronDown size={15} /></div></div>
       </nav>
       <main className="main-area">
-        <div className="page-heading"><div><div className="breadcrumbs"><span>Объекты</span><i>/</i><strong>КТП-103</strong></div><h1>Обследование линии</h1><p>Сверка схемы с фактическим состоянием сети</p></div><div className="heading-actions"><button className="outline-button" onClick={exportData}><Download size={16} /> Экспорт отчёта</button><button className="primary-button compact" onClick={locate}><Crosshair size={16} /> GPS {gps ? 'определён' : 'позиция'}</button></div></div>
-        <div className="metric-row"><Metric icon={<RadioTower />} label="КТП" value="1" detail="в работе" tone="blue" /><Metric icon={<Route />} label="Фидеры" value="3" detail="вдоль линии" tone="violet" /><Metric icon={<MapPin />} label="Опоры" value="28" detail="6 требуют внимания" tone="orange" /><Metric icon={<ShieldAlert />} label="Расхождения" value="4" detail="нужно проверить" tone="red" /></div>
+        <div className="page-heading"><div><div className="breadcrumbs"><span>{project.settlement}</span><i>/</i><strong>{project.ktp.name}</strong></div><h1>Обследование линии</h1><p>Сверка схемы с фактическим состоянием сети</p></div><div className="heading-actions"><button className="outline-button" onClick={exportData}><Download size={16} /> Экспорт отчёта</button><label className="outline-button file-button"><FileUp size={16} /> Импорт<input type="file" accept="application/json,.json" onChange={importData} /></label><button className="primary-button compact" onClick={locate}><Crosshair size={16} /> GPS {gps ? 'определён' : 'позиция'}</button></div></div>
+        <div className="metric-row"><Metric icon={<RadioTower />} label="КТП" value="1" detail="в работе" tone="blue" /><Metric icon={<Route />} label="Фидеры" value={objects.filter((object) => object.type === 'feeder').length} detail="вдоль линии" tone="violet" /><Metric icon={<MapPin />} label="Опоры" value={objects.filter((object) => object.type === 'pole').length} detail="объектов в базе" tone="orange" /><Metric icon={<ShieldAlert />} label="Расхождения" value={objects.filter((object) => object.type === 'pole' && (object.legCount !== object.schemeLegCount || object.meter === 'Не найден')).length} detail="нужно проверить" tone="red" /></div>
         <div className="content-grid">
-          <section className="map-card"><div className="card-toolbar"><div className="view-tabs"><button className={!showScheme ? 'active' : ''} onClick={() => setShowScheme(false)}><MapPin size={15} /> Карта</button><button className={showScheme ? 'active' : ''} onClick={() => setShowScheme(true)}><GitBranch size={15} /> Схема фидера</button></div><div className="toolbar-right"><button className="toolbar-button"><SlidersHorizontal size={15} /> Фильтры</button><button className="toolbar-button"><Layers3 size={15} /> Слои</button></div></div><YandexMap objects={objects} selectedId={selectedId} onSelect={selectObject} showScheme={showScheme} /><div className="map-footer"><div><span className="live-dot" /> <strong>Полевой режим активен</strong><span> · данные сохраняются на устройстве</span></div><button onClick={locate}><Navigation size={15} /> Центрировать по GPS</button></div></section>
+          <section className="map-card"><div className="card-toolbar"><div className="view-tabs"><button className={!showScheme ? 'active' : ''} onClick={() => setShowScheme(false)}><MapPin size={15} /> Карта</button><button className={showScheme ? 'active' : ''} onClick={() => setShowScheme(true)}><GitBranch size={15} /> Схема фидера</button></div><div className="toolbar-right"><button className="toolbar-button"><SlidersHorizontal size={15} /> Фильтры</button><button className="toolbar-button"><Layers3 size={15} /> Слои</button></div></div><YandexMap objects={objects} center={project.ktp.coords} selectedId={selectedId} onSelect={selectObject} showScheme={showScheme} /><div className="map-footer"><div><span className="live-dot" /> <strong>Полевой режим активен</strong><span> · данные сохраняются на устройстве</span></div><button onClick={locate}><Navigation size={15} /> Центрировать по GPS</button></div></section>
           <section className="objects-card"><div className="objects-head"><div><span className="eyebrow">Маршрут обследования</span><h2>Объекты на линии <span>6</span></h2></div><button className="add-button"><Plus size={16} /> Объект</button></div><div className="search-field"><Search size={16} /><input placeholder="Найти опору или ПУ" value={search} onChange={(event) => setSearch(event.target.value)} /><kbd>/</kbd></div><div className="object-list">{filtered.map((object) => <button key={object.id} className={`object-row ${selectedId === object.id ? 'selected' : ''}`} onClick={() => selectObject(object.id)}><div className={`object-icon ${object.type} ${object.status}`}>{object.type === 'feeder' ? <Route size={16} /> : <RadioTower size={16} />}</div><div className="object-copy"><strong>{object.name}</strong><span>{object.subtitle}</span><div className="mini-progress"><i style={{ width: `${object.progress}%` }} /></div></div><div className="object-end"><StatusPill status={object.status}>{object.progress}%</StatusPill><ChevronDown size={15} /></div></button>)}</div><div className="objects-foot"><span><i className="online-dot" /> Последняя синхронизация 2 мин назад</span><button onClick={exportData}><Upload size={14} /> Выгрузить</button></div></section>
         </div>
       </main>
       {selectedTab === 'objects' && selected && <PolePanel object={selected} checksState={checksState} setChecksState={setChecksState} onClose={() => setSelectedTab('map')} onLocate={locate} />}
       {selectedTab === 'checklist' && <ChecklistPanel checksState={checksState} setChecksState={setChecksState} onClose={() => setSelectedTab('map')} />}
-      {selectedTab === 'map' && <KtpPanel onClose={() => setSelectedTab('objects')} />}
+      {selectedTab === 'scheme' && <SettlementSchemePanel project={project} objects={objects} onClose={() => setSelectedTab('map')} onSelect={selectObject} />}
+      {selectedTab === 'diagram' && <DiagramEditorPanel project={project} objects={objects} diagram={diagram} onSave={saveDiagram} onClose={() => setSelectedTab('map')} />}
+      {selectedTab === 'builder' && <ProjectBuilderPanel project={project} objects={objects} onSave={saveProject} onClose={() => setSelectedTab('map')} />}
+      {selectedTab === 'map' && <KtpPanel ktp={project.ktp} onClose={() => setSelectedTab('objects')} />}
     </div>
   </div>;
 }
